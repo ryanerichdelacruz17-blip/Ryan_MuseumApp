@@ -12,6 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DelaCruz_Lab3">
         <activity
+            android:name=".ArtistPage"
+            android:exported="false"
+            android:label="@string/title_activity_artist_page"
+            android:theme="@style/Theme.DelaCruz_Lab3" />
+        <activity
             android:name=".DelaCruz_TicketingApp"
             android:exported="false"
             android:label="@string/title_activity_dela_cruz_ticketing_app"

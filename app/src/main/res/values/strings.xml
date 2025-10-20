@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">DelaCruz_Lab3</string>
     <string name="title_activity_dela_cruz_ticketing_app">DelaCruz_TicketingApp</string>
+    <string name="title_activity_artist_page">ArtistPage</string>
 </resources>

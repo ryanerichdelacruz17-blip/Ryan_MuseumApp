@@ -22,10 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,11 +36,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// Siguraduhin na na-import mo ang ArtistPage class kung ito ay nasa ibang file
+// import ph.edu.comteq.delacruz_lab3.ArtistPage
+
 import ph.edu.comteq.delacruz_lab3.ui.theme.DelaCruz_Lab3Theme
 
 
@@ -102,7 +102,7 @@ fun Explore(modifier: Modifier = Modifier) {
 
 
             // Divider
-            HorizontalDivider(Modifier, DividerDefaults.Thickness, color = Color.Gray)
+            HorizontalDivider(Modifier.fillMaxWidth(), color = Color.Gray)
 
             // Subheading
             Row(
@@ -121,6 +121,7 @@ fun Explore(modifier: Modifier = Modifier) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable {
+                        // Assuming DelaCruz_TicketingApp is the target activity
                         val intent = Intent(context, DelaCruz_TicketingApp::class.java)
                         context.startActivity(intent)
                     }
@@ -138,8 +139,6 @@ fun Explore(modifier: Modifier = Modifier) {
                         colorFilter = ColorFilter.tint(Color.Black),
                         modifier = Modifier
                             .height(17.dp)
-
-
                     )
                 }
             }
@@ -157,7 +156,6 @@ fun Explore(modifier: Modifier = Modifier) {
                     contentDescription = "Renaissance Exhibition",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-
                         .fillMaxWidth()
                         .height(300.dp)
                 )
@@ -216,15 +214,22 @@ fun Explore(modifier: Modifier = Modifier) {
                             fontSize = 18.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        //description
+
+                        // DESCRIPTION (Ginamitan ng clickable modifier)
                         Text(
-                            "Indulge in the rich tapestry of Renaissance art",
+                            text = "Indulge in the rich tapestry of Renaissance art",
                             color = Color(0xFFD4AF37),
                             fontFamily = optima1,
                             fontSize = 14.sp,
                             textDecoration = TextDecoration.Underline,
+                            modifier = Modifier.clickable {
+                                // Ito ang nagpapa-redirect sa ArtistPage
+                                val intent = Intent(context, ArtistPage::class.java)
+                                context.startActivity(intent)
+                            }
                         )
                         Spacer(modifier = Modifier.height(4.dp))
+
                         //contact
                         Text(
                             "+33 (0)1 23 45 67 89",
@@ -239,6 +244,7 @@ fun Explore(modifier: Modifier = Modifier) {
                 // Visit Gallery button
                 Button(
                     onClick = {
+                        // Assuming MainActivity is the target activity
                         val intent = Intent(context, MainActivity::class.java)
                         context.startActivity(intent)
                     },
