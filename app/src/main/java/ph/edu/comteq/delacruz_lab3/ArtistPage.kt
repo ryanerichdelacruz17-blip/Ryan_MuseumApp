@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -79,21 +81,18 @@ object MockData {
     val artists = listOf(leonardoDaVinci, michelangelo)
 }
 
+// JSON Parsing Function
 fun loadArtworksFromJson(context: Context): List<Artwork> {
     return try {
         val fileName = "artworks.json"
-
         val inputStream = context.assets.open(fileName)
         val jsonString = inputStream.bufferedReader().use { it.readText() }
-
         val gson = com.google.gson.Gson()
         val artworkArray = gson.fromJson(jsonString, Array<Artwork>::class.java)
-
         Log.d("JSON_DEBUG", "Loaded ${artworkArray.size} artworks successfully using GSON")
         artworkArray.toList()
     } catch (e: Exception) {
         Log.e("JSON_ERROR", "Failed to load artworks.json from assets (GSON): ${e.message}", e)
-
         listOf(
             Artwork(
                 title = "Error Loading JSON",
@@ -105,6 +104,7 @@ fun loadArtworksFromJson(context: Context): List<Artwork> {
     }
 }
 
+// Activity Class
 class ArtistPage : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,28 +118,37 @@ class ArtistPage : ComponentActivity() {
 }
 
 
+
+val OptimaFamily = FontFamily(Font(R.font.optima))
+val PlayfairDisplayFamily = FontFamily(Font(R.font.playfairdisplayregular))
+val AbeeZeeFamily = FontFamily(
+    Font(R.font.abeezee, FontWeight.Normal),
+    Font(R.font.abeezee, FontWeight.Light)
+)
+
 val RenaissanceGold = Color(0xFFC7A747)
 val BackgroundColor = Color(0xFFEDEADF)
-val DarkBackground = Color(0xFF1A1A1A)
+val DarkBackground = Color(0xFF333333)
+val ArtistTextDark = Color(0xFF5A5A5A)
+val ArtistTextLight = Color(0xFF909090)
 val ArtworkCornerRadius = 16.dp
 val ImageArcRadius = 40.dp
+val ArtworkImageStandardSize = 100.dp
+
+
 
 
 @Composable
 fun AppScreen() {
     val context = LocalContext.current
-
     val allArtworks = remember { loadArtworksFromJson(context) }
-
     var selectedArtworkData by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     val exhibitData = remember(selectedArtworkData) {
         val (name, imageId) = selectedArtworkData ?: Pair("Lady Ermine", R.drawable.lady_ermine)
 
         val nameToMatch = name.trim().lowercase()
-
         val artworkDetails = allArtworks.firstOrNull { it.title.trim().lowercase() == nameToMatch }
-
         val isErrorState = allArtworks.size == 1 && allArtworks.first().title.contains("Error")
 
         val finalArtwork = if (isErrorState) {
@@ -169,10 +178,10 @@ fun AppScreen() {
             painter = painterResource(id = R.drawable.background),
             contentDescription = "Background Texture",
             contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.5f
         )
 
-        // Navigation switch
         if (selectedArtworkData != null) {
             ExhibitPage(
                 exhibitData = exhibitData,
@@ -206,11 +215,13 @@ fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Un
             onTabSelected = { selectedTabIndex = it }
         )
 
+        Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
+
         Spacer(modifier = Modifier.height(20.dp))
 
         if (selectedTabIndex == 0) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(30.dp),
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
                 artists.forEach { artist ->
@@ -221,18 +232,32 @@ fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Un
             Text(
                 text = "Artworks content coming soon...",
                 modifier = Modifier.padding(20.dp),
-                color = Color.Black
+                color = ArtistTextDark,
+                fontFamily = OptimaFamily
             )
         }
     }
 }
 
+//  ArtistItem Dispatcher
 @Composable
 fun ArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+    val isRightAligned = artist.name == MockData.michelangelo.name
+
+    if (isRightAligned) {
+        RightAlignedArtistItem(artist = artist, onArtworkClick = onArtworkClick)
+    } else {
+        LeftAlignedArtistItem(artist = artist, onArtworkClick = onArtworkClick)
+    }
+}
+
+
+@Composable
+fun LeftAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
         ) {
             Image(
                 painter = painterResource(id = artist.avatarResId),
@@ -241,27 +266,32 @@ fun ArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape)
-                    .border(2.dp, Color.LightGray, CircleShape)
+                    .border(1.dp, Color.LightGray, CircleShape)
             )
             Spacer(modifier = Modifier.width(16.dp))
 
-            Column {
+            Column(
+                modifier = Modifier.offset(y = (-5).dp)
+            ) {
                 Text(
                     text = artist.name,
+                    fontFamily = OptimaFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = Color.Black
+                    color = ArtistTextDark
                 )
                 Text(
                     text = artist.years,
+                    fontFamily = OptimaFamily,
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = ArtistTextLight
                 )
             }
         }
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(start = 20.dp)
         ) {
             items(artist.artworkImageResIds.size) { index ->
                 val artworkName = artist.artworkNames.getOrElse(index) { "Unknown Artwork" }
@@ -269,6 +299,8 @@ fun ArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
 
                 ArtworkImage(
                     resourceId = imageResId,
+                    artworkIndex = index,
+                    artistName = artist.name,
                     onClick = { onArtworkClick(artworkName, imageResId) }
                 )
             }
@@ -277,14 +309,108 @@ fun ArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
 }
 
 @Composable
-fun ArtworkImage(resourceId: Int, onClick: () -> Unit) {
+fun RightAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.End
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.offset(y = (-5).dp)
+            ) {
+                Text(
+                    text = artist.name,
+                    fontFamily = OptimaFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = ArtistTextDark
+                )
+                Text(
+                    text = artist.years,
+                    fontFamily = OptimaFamily,
+                    fontSize = 14.sp,
+                    color = ArtistTextLight
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Image(
+                painter = painterResource(id = artist.avatarResId),
+                contentDescription = artist.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, Color.LightGray, CircleShape)
+            )
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(end = 20.dp),
+            reverseLayout = true,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(artist.artworkImageResIds.size) { index ->
+                val artworkName = artist.artworkNames.getOrElse(index) { "Unknown Artwork" }
+                val imageResId = artist.artworkImageResIds[index]
+
+                ArtworkImage(
+                    resourceId = imageResId,
+                    artworkIndex = index,
+                    artistName = artist.name,
+                    onClick = { onArtworkClick(artworkName, imageResId) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ArtworkImage(resourceId: Int, artworkIndex: Int, artistName: String, onClick: () -> Unit) {
+    var width = ArtworkImageStandardSize
+    var height = ArtworkImageStandardSize
+    var shape = RoundedCornerShape(ArtworkCornerRadius)
+
+    when (artistName) {
+        "Leonardo da Vinci" -> {
+            when (artworkIndex) {
+                1 -> {
+                    width = 80.dp
+                    height = 100.dp
+                    shape = CircleShape
+                }
+                else -> {
+                    width = 100.dp
+                    height = 100.dp
+                    shape = CircleShape
+                }
+            }
+        }
+        "Michelangelo" -> {
+            when (artworkIndex) {
+                1 -> {
+                    shape = CircleShape
+                }
+                else -> {
+                    shape = RoundedCornerShape(12.dp)
+                }
+            }
+        }
+    }
+
     Image(
         painter = painterResource(id = resourceId),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = Modifier
-            .size(100.dp)
-            .clip(RoundedCornerShape(ArtworkCornerRadius))
+            .width(width)
+            .height(height)
+            .clip(shape)
             .clickable(onClick = onClick)
     )
 }
@@ -297,12 +423,14 @@ fun HeaderSection(title: String) {
             text = title.substringBefore('\n'),
             fontSize = 32.sp,
             fontWeight = FontWeight.Light,
-            color = Color.Black
+            fontFamily = PlayfairDisplayFamily,
+            color = Color.Black.copy(alpha = 0.8f)
         )
         Text(
             text = title.substringAfter('\n'),
             fontSize = 32.sp,
-            fontWeight = FontWeight.Light,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = PlayfairDisplayFamily,
             color = RenaissanceGold
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -310,32 +438,37 @@ fun HeaderSection(title: String) {
         OutlinedTextField(
             value = "",
             onValueChange = {},
-            placeholder = { Text("Type to search...", color = Color.Gray) },
+            placeholder = { Text("Type to search...", color = Color.Gray, fontFamily = OptimaFamily) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search icon", tint = Color.Gray) },
             trailingIcon = {
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_scan),
                         contentDescription = "Scan icon",
                         tint = Color.Gray,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 4.dp).size(20.dp)
                     )
                     Icon(
                         Icons.Filled.Fullscreen,
                         contentDescription = "Fullscreen icon",
-                        tint = Color.Gray
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = RenaissanceGold,
-                unfocusedBorderColor = Color.LightGray,
+                focusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
+                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
                 cursorColor = RenaissanceGold,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
-            )
+                focusedContainerColor = Color.White.copy(alpha = 0.7f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.7f)
+            ),
+            singleLine = true
         )
     }
 }
@@ -349,6 +482,7 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
         horizontalArrangement = Arrangement.Start
     ) {
         tabs.forEachIndexed { index, title ->
+            val isSelected = selectedTabIndex == index
             Column(
                 modifier = Modifier
                     .padding(end = 40.dp)
@@ -357,16 +491,19 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
             ) {
                 Text(
                     text = title,
-                    color = if (selectedTabIndex == index) Color.Black else Color.Gray,
-                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                    fontFamily = OptimaFamily,
+                    color = if (isSelected) ArtistTextDark else Color.Gray,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 18.sp,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
-                if (selectedTabIndex == index) {
+                if (isSelected) {
                     Divider(
                         color = RenaissanceGold,
                         thickness = 3.dp,
-                        modifier = Modifier.width(60.dp)
+                        modifier = Modifier
+                            .width(50.dp)
+                            .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                     )
                 }
             }
@@ -379,6 +516,9 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
 fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
     val artwork = exhibitData.artwork
     val imageResId = exhibitData.imageResId
+    val archedShape = remember {
+        RoundedCornerShape(topStart = ImageArcRadius, topEnd = ImageArcRadius)
+    }
 
     Box(
         modifier = Modifier
@@ -391,20 +531,14 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = if (artwork.title.contains("Error")) "🔴 ERROR" else "Exhibit Page",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (artwork.title.contains("Error")) Color.Red else Color.White,
-                modifier = Modifier.align(Alignment.Start).padding(top = 20.dp, start = 20.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
                     .padding(top = 10.dp)
-                    .height(450.dp)
+                    .aspectRatio(1f / 1.5f)
             ) {
                 Image(
                     painter = painterResource(id = imageResId),
@@ -412,7 +546,7 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = ImageArcRadius, topEnd = ImageArcRadius))
+                        .clip(archedShape)
                 )
 
                 Row(
@@ -429,12 +563,14 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                     ) {
                         Text(
                             text = artwork.title,
+                            fontFamily = OptimaFamily,
                             color = DarkBackground,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${artwork.years}, ${artwork.born_at}",
+                            fontFamily = OptimaFamily,
                             color = DarkBackground.copy(alpha = 0.8f),
                             fontSize = 12.sp
                         )
@@ -468,17 +604,23 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                     contentDescription = "Quotation Mark",
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(40.dp)
                         .padding(end = 8.dp)
+                        .align(Alignment.Top)
+                        .offset(y = (-5).dp),
+                    alpha = 0.3f
                 )
 
                 Text(
                     text = artwork.comment,
+                    fontFamily = AbeeZeeFamily,
                     color = Color.White,
                     fontSize = 16.sp,
-                    lineHeight = 22.sp,
+                    lineHeight = 24.sp,
                     fontWeight = FontWeight.Light,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .offset(x = (-15).dp)
                 )
             }
         }
