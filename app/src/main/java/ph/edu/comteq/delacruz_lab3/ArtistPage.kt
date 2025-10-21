@@ -83,11 +83,9 @@ fun loadArtworksFromJson(context: Context): List<Artwork> {
     return try {
         val fileName = "artworks.json"
 
-        // Gamit ang asset loading na ginawa mo sa TheAlpsHotels project
         val inputStream = context.assets.open(fileName)
         val jsonString = inputStream.bufferedReader().use { it.readText() }
 
-        // ✅ Gamit ang GSON para i-parse ang JSON string
         val gson = com.google.gson.Gson()
         val artworkArray = gson.fromJson(jsonString, Array<Artwork>::class.java)
 
@@ -106,7 +104,6 @@ fun loadArtworksFromJson(context: Context): List<Artwork> {
         )
     }
 }
-// --- 2. Activity / Entry Point ---
 
 class ArtistPage : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -120,7 +117,6 @@ class ArtistPage : ComponentActivity() {
     }
 }
 
-// --- 3. UI Colors/Constants ---
 
 val RenaissanceGold = Color(0xFFC7A747)
 val BackgroundColor = Color(0xFFEDEADF)
@@ -128,7 +124,6 @@ val DarkBackground = Color(0xFF1A1A1A)
 val ArtworkCornerRadius = 16.dp
 val ImageArcRadius = 40.dp
 
-// --- 4. Main Screen/Navigation Handler - FINAL FIXED VERSION ---
 
 @Composable
 fun AppScreen() {
@@ -143,7 +138,6 @@ fun AppScreen() {
 
         val nameToMatch = name.trim().lowercase()
 
-        // ✅ Robust, case-insensitive at trim na paghahanap
         val artworkDetails = allArtworks.firstOrNull { it.title.trim().lowercase() == nameToMatch }
 
         val isErrorState = allArtworks.size == 1 && allArtworks.first().title.contains("Error")
@@ -151,7 +145,6 @@ fun AppScreen() {
         val finalArtwork = if (isErrorState) {
             allArtworks.first()
         } else {
-            // Fallback sa Lady Ermine kung walang nahanap (kung ang JSON ay gumana)
             artworkDetails
                 ?: allArtworks.firstOrNull { it.title.trim().lowercase() == "lady ermine" }
                 ?: Artwork(
@@ -194,7 +187,6 @@ fun AppScreen() {
     }
 }
 
-// --- 5. Artist Page Composable (Artists page prototype) ---
 @Composable
 fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Unit) {
     var selectedTabIndex by remember { mutableStateOf(0) }
@@ -297,7 +289,6 @@ fun ArtworkImage(resourceId: Int, onClick: () -> Unit) {
     )
 }
 
-// --- HeaderSection at TabSection ---
 
 @Composable
 fun HeaderSection(title: String) {
@@ -383,7 +374,6 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
     }
 }
 
-// --- 6. Exhibit Page Composable ---
 
 @Composable
 fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
@@ -401,7 +391,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Exhibit Page Title (inayos para makita ang error state)
             Text(
                 text = if (artwork.title.contains("Error")) "🔴 ERROR" else "Exhibit Page",
                 fontSize = 24.sp,
@@ -410,7 +399,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                 modifier = Modifier.align(Alignment.Start).padding(top = 20.dp, start = 20.dp)
             )
 
-            // 1. First Artwork Image and Overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -427,7 +415,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                         .clip(RoundedCornerShape(topStart = ImageArcRadius, topEnd = ImageArcRadius))
                 )
 
-                // Gold Text/Arrow Container
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -452,7 +439,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                             fontSize = 12.sp
                         )
                     }
-                    // Arrow icon
                     Box(
                         modifier = Modifier
                             .size(60.dp)
@@ -470,7 +456,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                 }
             }
 
-            // 2. Comment Area
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -478,7 +463,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                     .padding(top = 20.dp, bottom = 40.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Quotation mark icon
                 Image(
                     painter = painterResource(id = R.drawable.quote),
                     contentDescription = "Quotation Mark",
@@ -488,7 +472,6 @@ fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
                         .padding(end = 8.dp)
                 )
 
-                // Comment text
                 Text(
                     text = artwork.comment,
                     color = Color.White,
