@@ -1,30 +1,27 @@
 package ph.edu.comteq.delacruz_lab3
 
-import android.R
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -35,16 +32,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import ph.edu.comteq.delacruz_lab3.ui.theme.DelaCruz_Lab3Theme
-import kotlin.jvm.java
-
 
 val playfairdisplayregular = FontFamily(
-    Font(ph.edu.comteq.delacruz_lab3.R.font.playfairdisplayregular,FontWeight.Normal)
+    Font(ph.edu.comteq.delacruz_lab3.R.font.playfairdisplayregular, FontWeight.Normal)
 )
 
 val optima = FontFamily(
-    Font(ph.edu.comteq.delacruz_lab3.R.font.optima,FontWeight.Normal)
+    Font(ph.edu.comteq.delacruz_lab3.R.font.optima, FontWeight.Normal)
 )
 
 class MainActivity : ComponentActivity() {
@@ -64,30 +60,86 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting( modifier: Modifier = Modifier) {
+fun Greeting(modifier: Modifier = Modifier) {
+
     val context = LocalContext.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // Background Image
-        Image(
-            painter = painterResource(id = ph.edu.comteq.delacruz_lab3.R.drawable.louvre),
-            contentDescription = "Background Image",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+    // Animation States
+    var showMuseum by remember { mutableStateOf(false) }
+    var showTitle by remember { mutableStateOf(false) }
+    var showIntro by remember { mutableStateOf(false) }
 
-        // Gradient overlay
+    // Reveal progress (0 → 1)
+    val revealProgress by animateFloatAsState(
+        targetValue = if (showMuseum) 1f else 0f,
+        animationSpec = tween(1200)
+    )
+
+    // Fade-in progress for museum image
+    val fadeProgress by animateFloatAsState(
+        targetValue = if (showMuseum) 1f else 0f,
+        animationSpec = tween(1200)
+    )
+
+    // Museum pan effect (slight downward movement)
+    val panOffset by animateFloatAsState(
+        targetValue = if (showMuseum) 0f else -50f,
+        animationSpec = tween(1500)
+    )
+
+    // Run animation sequence
+    LaunchedEffect(Unit) {
+        delay(200)
+        showMuseum = true
+        delay(1300)
+        showTitle = true
+        delay(2000)
+        showIntro = true
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // ⭐ Museum Image Reveal + Fade + Pan
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { clip = true }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1000.dp)
+                    .graphicsLayer { clip = true }
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.louvre),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            clip = true
+                            shape = RectangleShape
+                            alpha = fadeProgress            // fade-in effect
+                            translationY = panOffset        // slight pan downward
+                        }
+                        .height((revealProgress * 1000).dp)
+                        .align(Alignment.TopStart),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
+        // Overlay gradient
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(Color(0xAA000000), Color(0x88000000), Color.Transparent),
-                        startY = 0f,
-                        endY = 1000f
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xAA000000),
+                            Color(0x88000000),
+                            Color.Transparent
+                        )
                     )
                 )
         )
@@ -100,65 +152,102 @@ fun Greeting( modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             // Logo + Title
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(top = 40.dp)
             ) {
-                Image(
-                    painter = painterResource(id = ph.edu.comteq.delacruz_lab3.R.drawable.logo),
-                    contentDescription = "Logo",
-                    modifier = Modifier
-                        .size(90.dp)
-                )
-                Text(
-                    text = "Experience Art",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
+                if (revealProgress == 1f) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(90.dp)
+                    )
+                }
+
+                if (showTitle) {
+                    TypewriterText(
+                        text = "Experience Art",
+                        fontSize = 34.sp,
+                        fontFamily = playfairdisplayregular,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        speed = 65L
+                    )
+                }
+            }
+
+            // Introduction text
+            if (showIntro) {
+                TypewriterText(
+                    text = "We are thrilled to invite you to join us for an\nextraordinary event that will immerse you in\nthe world of art.",
+                    fontSize = 18.sp,
+                    fontFamily = optima,
                     color = Color.White,
-                    fontFamily = playfairdisplayregular,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp)
+                    speed = 25L
                 )
             }
 
-            // Center Description
-            Text(
-                text = "We are thrilled to invite you to join us for an\nExtraordenary event that will immerse you in\nthe world or art.",
-                fontSize = 18.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                fontFamily = optima,
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-            )
-
-            // Explore Button
-            Button(
-                onClick = {
-                    val intent = Intent(context, ExploreActivity::class.java)
-                    context.startActivity(intent)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFDAA520)
-                ),
-                shape = RoundedCornerShape(50.dp)
-            ) {
-                Text(
-                    text = "Start Exploring",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    fontFamily = playfairdisplayregular
-                )
+            // Button
+            if (showIntro) {
+                Button(
+                    onClick = {
+                        val intent = Intent(context, ExploreActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFDAA520)
+                    ),
+                    shape = RoundedCornerShape(50.dp)
+                ) {
+                    Text(
+                        text = "Start Exploring",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        fontFamily = playfairdisplayregular
+                    )
+                }
             }
         }
     }
 }
 
+// Typewriter text composable
+@Composable
+fun TypewriterText(
+    text: String,
+    speed: Long = 40L,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    fontFamily: FontFamily,
+    fontWeight: FontWeight? = null,
+    color: Color,
+    textAlign: TextAlign = TextAlign.Start
+) {
+    var displayedText by remember { mutableStateOf("") }
+
+    LaunchedEffect(text) {
+        displayedText = ""
+        text.forEachIndexed { i, _ ->
+            displayedText = text.substring(0, i + 1)
+            delay(speed)
+        }
+    }
+
+    Text(
+        text = displayedText,
+        fontSize = fontSize,
+        fontFamily = fontFamily,
+        fontWeight = fontWeight,
+        color = color,
+        textAlign = textAlign
+    )
+}
 
 @Preview(showBackground = true)
 @Composable

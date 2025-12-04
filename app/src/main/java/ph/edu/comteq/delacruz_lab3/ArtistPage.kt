@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -27,12 +29,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.accompanist.pager.*
+import kotlinx.coroutines.launch
 import ph.edu.comteq.delacruz_lab3.ui.theme.DelaCruz_Lab3Theme
 
-
+// --- Data Classes ---
 data class Artwork(
     val title: String,
     val years: String,
@@ -53,6 +56,7 @@ data class ExhibitData(
     val imageResId: Int
 )
 
+// --- Mock Data ---
 object MockData {
     val leonardoDaVinci = Artist(
         name = "Leonardo da Vinci",
@@ -81,7 +85,7 @@ object MockData {
     val artists = listOf(leonardoDaVinci, michelangelo)
 }
 
-// JSON Parsing Function
+// --- JSON Parsing Function ---
 fun loadArtworksFromJson(context: Context): List<Artwork> {
     return try {
         val fileName = "artworks.json"
@@ -104,21 +108,7 @@ fun loadArtworksFromJson(context: Context): List<Artwork> {
     }
 }
 
-// Activity Class
-class ArtistPage : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            DelaCruz_Lab3Theme {
-                AppScreen()
-            }
-        }
-    }
-}
-
-
-
+// --- Fonts & Colors ---
 val OptimaFamily = FontFamily(Font(R.font.optima))
 val PlayfairDisplayFamily = FontFamily(Font(R.font.playfairdisplayregular))
 val AbeeZeeFamily = FontFamily(
@@ -135,40 +125,25 @@ val ArtworkCornerRadius = 16.dp
 val ImageArcRadius = 40.dp
 val ArtworkImageStandardSize = 100.dp
 
+// --- Main Activity ---
+class ArtistPage : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            DelaCruz_Lab3Theme {
+                AppScreen()
+            }
+        }
+    }
+}
 
-
-
+// --- App Screen ---
 @Composable
 fun AppScreen() {
     val context = LocalContext.current
     val allArtworks = remember { loadArtworksFromJson(context) }
-    var selectedArtworkData by remember { mutableStateOf<Pair<String, Int>?>(null) }
-
-    val exhibitData = remember(selectedArtworkData) {
-        val (name, imageId) = selectedArtworkData ?: Pair("Lady Ermine", R.drawable.lady_ermine)
-
-        val nameToMatch = name.trim().lowercase()
-        val artworkDetails = allArtworks.firstOrNull { it.title.trim().lowercase() == nameToMatch }
-        val isErrorState = allArtworks.size == 1 && allArtworks.first().title.contains("Error")
-
-        val finalArtwork = if (isErrorState) {
-            allArtworks.first()
-        } else {
-            artworkDetails
-                ?: allArtworks.firstOrNull { it.title.trim().lowercase() == "lady ermine" }
-                ?: Artwork(
-                    title = name,
-                    years = "Data Missing",
-                    born_at = "Unknown",
-                    comment = "Could not find specific data for '$name' in JSON."
-                )
-        }
-
-        ExhibitData(
-            artwork = finalArtwork,
-            imageResId = imageId
-        )
-    }
+    var selectedArtist by remember { mutableStateOf<Artist?>(null) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -182,22 +157,38 @@ fun AppScreen() {
             alpha = 0.5f
         )
 
-        if (selectedArtworkData != null) {
-            ExhibitPage(
-                exhibitData = exhibitData,
-                onBackClick = { selectedArtworkData = null }
+        if (selectedArtist != null) {
+            // Create ExhibitData list for the artist
+            val exhibitDataList = selectedArtist!!.artworkImageResIds.mapIndexed { index, resId ->
+                val artworkName = selectedArtist!!.artworkNames.getOrElse(index) { "Unknown Artwork" }
+                val artworkDetails = allArtworks.firstOrNull { it.title.lowercase() == artworkName.lowercase() }
+                    ?: Artwork(
+                        title = artworkName,
+                        years = "Data Missing",
+                        born_at = "Unknown",
+                        comment = "Could not find specific data for '$artworkName'."
+                    )
+                ExhibitData(artwork = artworkDetails, imageResId = resId)
+            }
+
+            SwipeExhibitPage(
+                exhibitDataList = exhibitDataList,
+                onBackClick = { selectedArtist = null }
             )
         } else {
             ArtistPageContent(
                 artists = MockData.artists,
-                onArtworkClick = { name, resId -> selectedArtworkData = Pair(name, resId) }
+                onArtworkClick = { artist ->
+                    selectedArtist = artist
+                }
             )
         }
     }
 }
 
+// --- Artist Page Content ---
 @Composable
-fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Unit) {
+fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (Artist) -> Unit) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Artists", "Artworks")
 
@@ -206,7 +197,6 @@ fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Un
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-
         HeaderSection(title = "Explore the art of\nRenaissance")
 
         TabSection(
@@ -216,7 +206,6 @@ fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Un
         )
 
         Divider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 1.dp)
-
         Spacer(modifier = Modifier.height(20.dp))
 
         if (selectedTabIndex == 0) {
@@ -239,21 +228,9 @@ fun ArtistPageContent(artists: List<Artist>, onArtworkClick: (String, Int) -> Un
     }
 }
 
-//  ArtistItem Dispatcher
+// --- Artist Item Dispatcher ---
 @Composable
-fun ArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
-    val isRightAligned = artist.name == MockData.michelangelo.name
-
-    if (isRightAligned) {
-        RightAlignedArtistItem(artist = artist, onArtworkClick = onArtworkClick)
-    } else {
-        LeftAlignedArtistItem(artist = artist, onArtworkClick = onArtworkClick)
-    }
-}
-
-
-@Composable
-fun LeftAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
+fun ArtistItem(artist: Artist, onArtworkClick: (Artist) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -269,10 +246,7 @@ fun LeftAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit)
                     .border(1.dp, Color.LightGray, CircleShape)
             )
             Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.offset(y = (-5).dp)
-            ) {
+            Column(modifier = Modifier.offset(y = (-5).dp)) {
                 Text(
                     text = artist.name,
                     fontFamily = OptimaFamily,
@@ -294,82 +268,19 @@ fun LeftAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit)
             contentPadding = PaddingValues(start = 20.dp)
         ) {
             items(artist.artworkImageResIds.size) { index ->
-                val artworkName = artist.artworkNames.getOrElse(index) { "Unknown Artwork" }
                 val imageResId = artist.artworkImageResIds[index]
-
                 ArtworkImage(
                     resourceId = imageResId,
                     artworkIndex = index,
                     artistName = artist.name,
-                    onClick = { onArtworkClick(artworkName, imageResId) }
+                    onClick = { onArtworkClick(artist) }
                 )
             }
         }
     }
 }
 
-@Composable
-fun RightAlignedArtistItem(artist: Artist, onArtworkClick: (String, Int) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.End
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier.offset(y = (-5).dp)
-            ) {
-                Text(
-                    text = artist.name,
-                    fontFamily = OptimaFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = ArtistTextDark
-                )
-                Text(
-                    text = artist.years,
-                    fontFamily = OptimaFamily,
-                    fontSize = 14.sp,
-                    color = ArtistTextLight
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Image(
-                painter = painterResource(id = artist.avatarResId),
-                contentDescription = artist.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, Color.LightGray, CircleShape)
-            )
-        }
-
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(end = 20.dp),
-            reverseLayout = true,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(artist.artworkImageResIds.size) { index ->
-                val artworkName = artist.artworkNames.getOrElse(index) { "Unknown Artwork" }
-                val imageResId = artist.artworkImageResIds[index]
-
-                ArtworkImage(
-                    resourceId = imageResId,
-                    artworkIndex = index,
-                    artistName = artist.name,
-                    onClick = { onArtworkClick(artworkName, imageResId) }
-                )
-            }
-        }
-    }
-}
-
+// --- Artwork Image ---
 @Composable
 fun ArtworkImage(resourceId: Int, artworkIndex: Int, artistName: String, onClick: () -> Unit) {
     var width = ArtworkImageStandardSize
@@ -379,26 +290,14 @@ fun ArtworkImage(resourceId: Int, artworkIndex: Int, artistName: String, onClick
     when (artistName) {
         "Leonardo da Vinci" -> {
             when (artworkIndex) {
-                1 -> {
-                    width = 80.dp
-                    height = 100.dp
-                    shape = CircleShape
-                }
-                else -> {
-                    width = 100.dp
-                    height = 100.dp
-                    shape = CircleShape
-                }
+                1 -> { width = 80.dp; height = 100.dp; shape = CircleShape }
+                else -> { width = 100.dp; height = 100.dp; shape = CircleShape }
             }
         }
         "Michelangelo" -> {
             when (artworkIndex) {
-                1 -> {
-                    shape = CircleShape
-                }
-                else -> {
-                    shape = RoundedCornerShape(12.dp)
-                }
+                1 -> { shape = CircleShape }
+                else -> { shape = RoundedCornerShape(12.dp) }
             }
         }
     }
@@ -415,7 +314,7 @@ fun ArtworkImage(resourceId: Int, artworkIndex: Int, artistName: String, onClick
     )
 }
 
-
+// --- Header Section ---
 @Composable
 fun HeaderSection(title: String) {
     Column(modifier = Modifier.padding(20.dp)) {
@@ -448,18 +347,11 @@ fun HeaderSection(title: String) {
                         tint = Color.Gray,
                         modifier = Modifier.padding(end = 4.dp).size(20.dp)
                     )
-                    Icon(
-                        Icons.Filled.Fullscreen,
-                        contentDescription = "Fullscreen icon",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(Icons.Filled.Fullscreen, contentDescription = "Fullscreen icon", tint = Color.Gray, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(8.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
@@ -473,20 +365,17 @@ fun HeaderSection(title: String) {
     }
 }
 
+// --- Tab Section ---
 @Composable
 fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.Start
     ) {
         tabs.forEachIndexed { index, title ->
             val isSelected = selectedTabIndex == index
             Column(
-                modifier = Modifier
-                    .padding(end = 40.dp)
-                    .clickable { onTabSelected(index) },
+                modifier = Modifier.padding(end = 40.dp).clickable { onTabSelected(index) },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -501,9 +390,7 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
                     Divider(
                         color = RenaissanceGold,
                         thickness = 3.dp,
-                        modifier = Modifier
-                            .width(50.dp)
-                            .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                        modifier = Modifier.width(50.dp).clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                     )
                 }
             }
@@ -511,118 +398,94 @@ fun TabSection(tabs: List<String>, selectedTabIndex: Int, onTabSelected: (Int) -
     }
 }
 
-
+// --- Swipeable Exhibit Page ---
+@OptIn(ExperimentalPagerApi::class)
 @Composable
-fun ExhibitPage(exhibitData: ExhibitData, onBackClick: () -> Unit) {
-    val artwork = exhibitData.artwork
-    val imageResId = exhibitData.imageResId
-    val archedShape = remember {
-        RoundedCornerShape(topStart = ImageArcRadius, topEnd = ImageArcRadius)
-    }
+fun SwipeExhibitPage(
+    exhibitDataList: List<ExhibitData>,
+    onBackClick: () -> Unit
+) {
+    val pagerState = rememberPagerState(initialPage = 0)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(20.dp))
+        HorizontalPager(
+            count = exhibitDataList.size,
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 40.dp),
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
 
-            Box(
+            val exhibitData = exhibitDataList[page]
+            val artwork = exhibitData.artwork
+            val imageResId = exhibitData.imageResId
+
+            // Animate scale of current page
+            val scale by animateFloatAsState(
+                targetValue = if (pagerState.currentPage == page) 1f else 0.85f
+            )
+
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 10.dp)
-                    .aspectRatio(1f / 1.5f)
+                    .scale(scale),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Artwork Image
                 Image(
                     painter = painterResource(id = imageResId),
                     contentDescription = artwork.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(archedShape)
+                        .fillMaxWidth()
+                        .aspectRatio(1f / 1.5f)
+                        .clip(RoundedCornerShape(topStart = ImageArcRadius, topEnd = ImageArcRadius))
                 )
 
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .background(RenaissanceGold),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Artwork Info
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(start = 20.dp)
-                    ) {
-                        Text(
-                            text = artwork.title,
-                            fontFamily = OptimaFamily,
-                            color = DarkBackground,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${artwork.years}, ${artwork.born_at}",
-                            fontFamily = OptimaFamily,
-                            color = DarkBackground.copy(alpha = 0.8f),
-                            fontSize = 12.sp
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .background(DarkBackground)
-                            .clickable(onClick = onBackClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowForward,
-                            contentDescription = "Go to details",
-                            tint = RenaissanceGold,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    Text(
+                        text = artwork.title,
+                        fontFamily = OptimaFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "${artwork.years}, ${artwork.born_at}",
+                        fontFamily = OptimaFamily,
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = artwork.comment,
+                        fontFamily = AbeeZeeFamily,
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        lineHeight = 22.sp
+                    )
                 }
             }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 40.dp)
-                    .padding(top = 20.dp, bottom = 40.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.quote),
-                    contentDescription = "Quotation Mark",
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-                    modifier = Modifier
-                        .size(40.dp)
-                        .padding(end = 8.dp)
-                        .align(Alignment.Top)
-                        .offset(y = (-5).dp),
-                    alpha = 0.3f
-                )
-
-                Text(
-                    text = artwork.comment,
-                    fontFamily = AbeeZeeFamily,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    fontWeight = FontWeight.Light,
-                    modifier = Modifier
-                        .weight(1f)
-                        .offset(x = (-15).dp)
-                )
-            }
         }
+
+        // Optional: You can add PagerIndicator at bottom
+        HorizontalPagerIndicator(
+            pagerState = pagerState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 20.dp),
+            activeColor = RenaissanceGold,
+            inactiveColor = Color.Gray.copy(alpha = 0.5f)
+        )
     }
 }
+
+
